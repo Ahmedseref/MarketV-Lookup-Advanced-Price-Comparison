@@ -1,0 +1,5 @@
+{
+  "name": "MarketV-Lookup: Advanced Price Comparison",
+  "description": "A high-performance pricing analysis tool that performs intelligent lookups between standardized supplier data and messy market research, featuring automated text normalization, token-based matching, and deep price analytics.",
+  "requestFramePermissions": []
+}
