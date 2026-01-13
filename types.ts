@@ -3,6 +3,8 @@ export interface SupplierProduct {
   id: string;
   code: string;
   description: string;
+  size?: string;
+  otherFeature?: string;
   price: number;
   currency: string;
   incoterm?: string;
@@ -13,7 +15,11 @@ export interface SupplierProduct {
 export interface MarketProduct {
   id: string;
   description: string;
-  price: number;
+  price: number; // Base/Reported price
+  minPrice?: number;
+  maxPrice?: number;
+  retailPrice?: number;
+  wholesalePrice?: number;
   currency: string;
   source?: string;
   country?: string;

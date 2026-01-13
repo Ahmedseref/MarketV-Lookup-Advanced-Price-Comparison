@@ -49,7 +49,6 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ suppliers, markets, m
     neutral: 'text-slate-600 bg-slate-50 border-slate-100'
   };
 
-  // Prepare data with pre-calculated stats for sorting/filtering
   const viewRows = useMemo(() => {
     let rows: ViewRow[] = suppliers.map(sup => {
       const productMatches = matches
@@ -62,23 +61,22 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ suppliers, markets, m
       return { supplier: sup, matchedItems, productMatches, stats };
     });
 
-    // 1. Filter by Search Term
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
       rows = rows.filter(r => 
         r.supplier.description.toLowerCase().includes(lowerSearch) || 
-        r.supplier.code.toLowerCase().includes(lowerSearch)
+        r.supplier.code.toLowerCase().includes(lowerSearch) ||
+        r.supplier.size?.toLowerCase().includes(lowerSearch) ||
+        r.supplier.otherFeature?.toLowerCase().includes(lowerSearch)
       );
     }
 
-    // 2. Filter by Match Status
     if (filterStatus === 'matched') {
       rows = rows.filter(r => r.matchedItems.length > 0);
     } else if (filterStatus === 'unmatched') {
       rows = rows.filter(r => r.matchedItems.length === 0);
     }
 
-    // 3. Sort
     rows.sort((a, b) => {
       let comparison = 0;
       switch (sortKey) {
@@ -89,7 +87,6 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ suppliers, markets, m
           comparison = a.supplier.price - b.supplier.price;
           break;
         case 'variance':
-          // If no matches, put them at the end or use 0
           const varA = a.matchedItems.length > 0 ? a.stats.varianceFromAvg : -999;
           const varB = b.matchedItems.length > 0 ? b.stats.varianceFromAvg : -999;
           comparison = varA - varB;
@@ -109,13 +106,12 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ suppliers, markets, m
       setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
     } else {
       setSortKey(key);
-      setSortOrder('desc'); // Default to desc for numeric metrics usually
+      setSortOrder('desc');
     }
   };
 
   return (
     <div className="space-y-4">
-      {/* Enhanced Toolbar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
         <div className="relative w-full md:w-80">
           <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -125,7 +121,7 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ suppliers, markets, m
           </span>
           <input
             type="text"
-            placeholder="Search descriptions or codes..."
+            placeholder="Search descriptions, codes, features..."
             className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -146,9 +142,7 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ suppliers, markets, m
               </button>
             ))}
           </div>
-
           <div className="h-6 w-px bg-slate-200 mx-2 hidden md:block"></div>
-
           <div className="flex gap-2">
             <select
               className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold rounded-lg px-2 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -160,38 +154,21 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ suppliers, markets, m
               <option value="variance">Sort by: Variance</option>
               <option value="matches">Sort by: Match Count</option>
             </select>
-            <button 
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              className="p-2 bg-slate-50 border border-slate-200 rounded-lg hover:bg-slate-100 transition-colors"
-            >
-              <svg className={`w-4 h-4 text-slate-600 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
-              </svg>
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Main Table */}
       <div className="overflow-x-auto border border-slate-200 rounded-xl shadow-sm bg-white">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs font-semibold uppercase tracking-wider">
               <th className="px-6 py-4 w-10"></th>
-              <th className="px-6 py-4 cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('description')}>
-                Product Details {sortKey === 'description' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </th>
-              <th className="px-6 py-4 text-right cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('price')}>
-                Supplier Price {sortKey === 'price' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </th>
-              <th className="px-6 py-4 text-center cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('matches')}>
-                Matches {sortKey === 'matches' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </th>
+              <th className="px-6 py-4">Product Details</th>
+              <th className="px-6 py-4 text-right">Supplier Price</th>
+              <th className="px-6 py-4 text-center">Matches</th>
               <th className="px-6 py-4 text-right">Market Avg</th>
               <th className="px-6 py-4 text-right">Min Market</th>
-              <th className="px-6 py-4 text-center cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => handleSort('variance')}>
-                Pricing Health {sortKey === 'variance' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </th>
+              <th className="px-6 py-4 text-center">Pricing Health</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -210,7 +187,11 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ suppliers, markets, m
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-semibold text-slate-900">{sup.description}</div>
-                        <div className="text-xs text-slate-400 font-mono mt-0.5">{sup.code}</div>
+                        <div className="flex gap-2 items-center mt-1">
+                          <span className="text-xs text-slate-400 font-mono">{sup.code}</span>
+                          {sup.size && <span className="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">Size: {sup.size}</span>}
+                          {sup.otherFeature && <span className="text-[10px] bg-indigo-50 px-1.5 py-0.5 rounded text-indigo-500">{sup.otherFeature}</span>}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-right font-medium text-slate-700">
                         {sup.price.toFixed(2)} <span className="text-[10px] text-slate-400">{sup.currency}</span>
@@ -239,25 +220,44 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ suppliers, markets, m
                     {isExpanded && (
                       <tr>
                         <td colSpan={7} className="px-6 py-4 bg-slate-50/50">
-                          <div className="border-l-4 border-indigo-400 pl-4 py-2 space-y-3">
-                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Market Breakdown</h4>
+                          <div className="border-l-4 border-indigo-400 pl-4 py-2 space-y-4">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Market Comparison Details</h4>
                             {matchedItems.length > 0 ? (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 gap-4">
                                 {productMatches.map(pm => {
                                   const mk = markets.find(m => m.id === pm.marketId)!;
                                   return (
-                                    <div key={mk.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex justify-between items-center group">
-                                      <div>
-                                        <div className="text-sm font-medium text-slate-800">{mk.description}</div>
+                                    <div key={mk.id} className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between gap-4">
+                                      <div className="flex-grow">
+                                        <div className="text-sm font-bold text-slate-800">{mk.description}</div>
                                         <div className="flex gap-2 items-center mt-1">
                                           <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded uppercase font-bold">{mk.source || 'Unknown'}</span>
                                           <span className="text-[10px] text-slate-400">{mk.country || 'Global'}</span>
                                         </div>
                                       </div>
-                                      <div className="text-right">
-                                        <div className="text-sm font-bold text-slate-900">{mk.price.toFixed(2)} {mk.currency}</div>
-                                        <div className={`text-[10px] font-bold ${pm.confidence > 90 ? 'text-emerald-500' : pm.confidence > 80 ? 'text-amber-500' : 'text-slate-400'}`}>
-                                          {pm.confidence.toFixed(0)}% Match
+                                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4 text-center">
+                                        <div>
+                                          <div className="text-[9px] text-slate-400 uppercase font-bold">Base Price</div>
+                                          <div className="text-sm font-bold text-slate-900">{mk.price.toFixed(2)}</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-[9px] text-slate-400 uppercase font-bold">Min/Max</div>
+                                          <div className="text-xs font-medium text-slate-600">
+                                            {mk.minPrice?.toFixed(1) || '-'}/{mk.maxPrice?.toFixed(1) || '-'}
+                                          </div>
+                                        </div>
+                                        <div>
+                                          <div className="text-[9px] text-slate-400 uppercase font-bold">Retail</div>
+                                          <div className="text-sm font-bold text-emerald-600">{mk.retailPrice?.toFixed(2) || '-'}</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-[9px] text-slate-400 uppercase font-bold">Wholesale</div>
+                                          <div className="text-sm font-bold text-indigo-600">{mk.wholesalePrice?.toFixed(2) || '-'}</div>
+                                        </div>
+                                        <div className="flex flex-col items-center justify-center">
+                                          <div className={`text-[10px] font-bold px-2 py-0.5 rounded ${pm.confidence > 85 ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                                            {pm.confidence.toFixed(0)}% Match
+                                          </div>
                                         </div>
                                       </div>
                                     </div>
@@ -265,7 +265,7 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ suppliers, markets, m
                                 })}
                               </div>
                             ) : (
-                              <div className="text-sm text-slate-400 italic">Try lowering the confidence threshold to find potential matches.</div>
+                              <div className="text-sm text-slate-400 italic">No market matches found within the confidence threshold.</div>
                             )}
                           </div>
                         </td>
@@ -276,9 +276,7 @@ const ComparisonTable: React.FC<ComparisonTableProps> = ({ suppliers, markets, m
               })
             ) : (
               <tr>
-                <td colSpan={7} className="px-6 py-12 text-center text-slate-400 italic">
-                  No products found matching your search and filters.
-                </td>
+                <td colSpan={7} className="px-6 py-12 text-center text-slate-400 italic">No products found.</td>
               </tr>
             )}
           </tbody>

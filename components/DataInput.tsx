@@ -15,6 +15,8 @@ const DataInput: React.FC<DataInputProps> = ({ onProcess }) => {
   const [supplierCols, setSupplierCols] = useState<ColumnData>({
     code: '',
     description: '',
+    size: '',
+    feature: '',
     price: '',
     currency: '',
     incoterm: '',
@@ -24,6 +26,10 @@ const DataInput: React.FC<DataInputProps> = ({ onProcess }) => {
   const [marketCols, setMarketCols] = useState<ColumnData>({
     description: '',
     price: '',
+    minPrice: '',
+    maxPrice: '',
+    retail: '',
+    wholesale: '',
     currency: '',
     source: '',
     country: ''
@@ -37,10 +43,17 @@ const DataInput: React.FC<DataInputProps> = ({ onProcess }) => {
     setMarketCols(prev => ({ ...prev, [key]: value }));
   };
 
+  const parseVal = (val: string) => {
+    const cleaned = val?.replace(/[^\d.]/g, '');
+    return cleaned ? parseFloat(cleaned) : undefined;
+  };
+
   const zipData = () => {
     // Process Supplier Data
     const sCodes = supplierCols.code.split('\n');
     const sDescs = supplierCols.description.split('\n');
+    const sSizes = supplierCols.size.split('\n');
+    const sFeatures = supplierCols.feature.split('\n');
     const sPrices = supplierCols.price.split('\n');
     const sCurrencies = supplierCols.currency.split('\n');
     const sIncoterms = supplierCols.incoterm.split('\n');
@@ -51,23 +64,29 @@ const DataInput: React.FC<DataInputProps> = ({ onProcess }) => {
 
     for (let i = 0; i < maxSupplierRows; i++) {
       const desc = sDescs[i]?.trim() || '';
-      if (!desc && !sCodes[i]?.trim()) continue; // Skip empty rows
+      if (!desc && !sCodes[i]?.trim()) continue;
 
       suppliers.push({
         id: `sup-${i}-${Date.now()}`,
         code: sCodes[i]?.trim() || 'N/A',
         description: desc || `Product ${i + 1}`,
-        price: parseFloat(sPrices[i]?.replace(/[^\d.]/g, '') || '0'),
+        size: sSizes[i]?.trim(),
+        otherFeature: sFeatures[i]?.trim(),
+        price: parseVal(sPrices[i]) || 0,
         currency: sCurrencies[i]?.trim() || 'USD',
         incoterm: sIncoterms[i]?.trim(),
         moq: sMoqs[i]?.trim(),
-        normalizedTokens: normalizeText(desc)
+        normalizedTokens: normalizeText(`${desc} ${sSizes[i] || ''} ${sFeatures[i] || ''}`)
       });
     }
 
     // Process Market Data
     const mDescs = marketCols.description.split('\n');
     const mPrices = marketCols.price.split('\n');
+    const mMinPrices = marketCols.minPrice.split('\n');
+    const mMaxPrices = marketCols.maxPrice.split('\n');
+    const mRetail = marketCols.retail.split('\n');
+    const mWholesale = marketCols.wholesale.split('\n');
     const mCurrencies = marketCols.currency.split('\n');
     const mSources = marketCols.source.split('\n');
     const mCountries = marketCols.country.split('\n');
@@ -82,7 +101,11 @@ const DataInput: React.FC<DataInputProps> = ({ onProcess }) => {
       markets.push({
         id: `mkt-${i}-${Date.now()}`,
         description: desc || `Market Item ${i + 1}`,
-        price: parseFloat(mPrices[i]?.replace(/[^\d.]/g, '') || '0'),
+        price: parseVal(mPrices[i]) || 0,
+        minPrice: parseVal(mMinPrices[i]),
+        maxPrice: parseVal(mMaxPrices[i]),
+        retailPrice: parseVal(mRetail[i]),
+        wholesalePrice: parseVal(mWholesale[i]),
         currency: mCurrencies[i]?.trim() || 'USD',
         source: mSources[i]?.trim(),
         country: mCountries[i]?.trim(),
@@ -93,20 +116,20 @@ const DataInput: React.FC<DataInputProps> = ({ onProcess }) => {
     onProcess(suppliers, markets);
   };
 
-  const ColumnBox = ({ label, value, onChange, placeholder, required = false }: any) => (
-    <div className="flex flex-col min-w-[200px] flex-1">
-      <label className="text-xs font-bold text-slate-500 uppercase mb-1 flex justify-between">
+  const ColumnBox = ({ label, value, onChange, placeholder, required = false, theme = 'indigo' }: any) => (
+    <div className="flex flex-col min-w-[180px] flex-1">
+      <label className={`text-[10px] font-bold ${theme === 'indigo' ? 'text-indigo-600' : 'text-amber-600'} uppercase mb-1 flex justify-between`}>
         {label}
         {required && <span className="text-rose-500">*</span>}
       </label>
       <textarea
-        className="h-64 p-3 font-mono text-xs bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition excel-input shadow-sm resize-none"
+        className="h-64 p-3 font-mono text-[11px] bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition excel-input shadow-sm resize-none"
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
       <div className="mt-1 text-[10px] text-slate-400 font-medium">
-        {value.split('\n').filter((l: string) => l.trim()).length} rows detected
+        {value.split('\n').filter((l: string) => l.trim()).length} rows
       </div>
     </div>
   );
@@ -117,50 +140,20 @@ const DataInput: React.FC<DataInputProps> = ({ onProcess }) => {
       <section>
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">1. Supplier Data Columns</h2>
-            <p className="text-sm text-slate-500">Paste entire columns from Excel into each respective box below.</p>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">1. Standardized Supplier Columns</h2>
+            <p className="text-sm text-slate-500">Paste your master data catalog columns individually.</p>
           </div>
-          <div className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full">Master Reference</div>
+          <div className="px-3 py-1 bg-indigo-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-full">Source of Truth</div>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-          <ColumnBox 
-            label="Product Code" 
-            value={supplierCols.code} 
-            onChange={(v: string) => handleSupplierColChange('code', v)} 
-            placeholder="PROD-001&#10;PROD-002"
-          />
-          <ColumnBox 
-            label="Description" 
-            value={supplierCols.description} 
-            onChange={(v: string) => handleSupplierColChange('description', v)} 
-            placeholder="Standard Adhesive&#10;Heavy Duty Sealant"
-            required
-          />
-          <ColumnBox 
-            label="Price" 
-            value={supplierCols.price} 
-            onChange={(v: string) => handleSupplierColChange('price', v)} 
-            placeholder="45.50&#10;120.00"
-            required
-          />
-          <ColumnBox 
-            label="Currency" 
-            value={supplierCols.currency} 
-            onChange={(v: string) => handleSupplierColChange('currency', v)} 
-            placeholder="USD&#10;EUR"
-          />
-          <ColumnBox 
-            label="Incoterm" 
-            value={supplierCols.incoterm} 
-            onChange={(v: string) => handleSupplierColChange('incoterm', v)} 
-            placeholder="FOB&#10;EXW"
-          />
-          <ColumnBox 
-            label="MOQ" 
-            value={supplierCols.moq} 
-            onChange={(v: string) => handleSupplierColChange('moq', v)} 
-            placeholder="100&#10;500"
-          />
+        <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+          <ColumnBox label="Code" value={supplierCols.code} onChange={(v: string) => handleSupplierColChange('code', v)} placeholder="SKU-101" />
+          <ColumnBox label="Description" value={supplierCols.description} onChange={(v: string) => handleSupplierColChange('description', v)} placeholder="Standard Valve" required />
+          <ColumnBox label="Size" value={supplierCols.size} onChange={(v: string) => handleSupplierColChange('size', v)} placeholder="1/2 inch" />
+          <ColumnBox label="Other Feature" value={supplierCols.feature} onChange={(v: string) => handleSupplierColChange('feature', v)} placeholder="Stainless Steel" />
+          <ColumnBox label="Price" value={supplierCols.price} onChange={(v: string) => handleSupplierColChange('price', v)} placeholder="10.50" required />
+          <ColumnBox label="Currency" value={supplierCols.currency} onChange={(v: string) => handleSupplierColChange('currency', v)} placeholder="USD" />
+          <ColumnBox label="Incoterm" value={supplierCols.incoterm} onChange={(v: string) => handleSupplierColChange('incoterm', v)} placeholder="FOB" />
+          <ColumnBox label="MOQ" value={supplierCols.moq} onChange={(v: string) => handleSupplierColChange('moq', v)} placeholder="100" />
         </div>
       </section>
 
@@ -168,55 +161,32 @@ const DataInput: React.FC<DataInputProps> = ({ onProcess }) => {
       <section>
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">2. Market Research Columns</h2>
-            <p className="text-sm text-slate-500">Paste messy market data here. The app will normalize and match these descriptions to the supplier.</p>
+            <h2 className="text-xl font-bold text-slate-900 tracking-tight">2. Market Research Columns</h2>
+            <p className="text-sm text-slate-500">Capture varied market data, including multiple price points (Retail, Wholesale, etc.).</p>
           </div>
-          <div className="px-3 py-1 bg-amber-500 text-white text-[10px] font-bold uppercase tracking-widest rounded-full">External Data</div>
+          <div className="px-3 py-1 bg-amber-500 text-white text-[10px] font-bold uppercase tracking-widest rounded-full">Market Context</div>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-          <ColumnBox 
-            label="Market Description" 
-            value={marketCols.description} 
-            onChange={(v: string) => handleMarketColChange('description', v)} 
-            placeholder="Super Glue 500ml&#10;Industrial Sealant"
-            required
-          />
-          <ColumnBox 
-            label="Market Price" 
-            value={marketCols.price} 
-            onChange={(v: string) => handleMarketColChange('price', v)} 
-            placeholder="48.00&#10;115.00"
-            required
-          />
-          <ColumnBox 
-            label="Currency" 
-            value={marketCols.currency} 
-            onChange={(v: string) => handleMarketColChange('currency', v)} 
-            placeholder="USD&#10;USD"
-          />
-          <ColumnBox 
-            label="Distributor / Source" 
-            value={marketCols.source} 
-            onChange={(v: string) => handleMarketColChange('source', v)} 
-            placeholder="GlobalSource&#10;DirectChem"
-          />
-          <ColumnBox 
-            label="Region / Country" 
-            value={marketCols.country} 
-            onChange={(v: string) => handleMarketColChange('country', v)} 
-            placeholder="USA&#10;Germany"
-          />
+        <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+          <ColumnBox label="Description" value={marketCols.description} onChange={(v: string) => handleMarketColChange('description', v)} placeholder="Valve 0.5'" theme="amber" required />
+          <ColumnBox label="Base Price" value={marketCols.price} onChange={(v: string) => handleMarketColChange('price', v)} placeholder="11.00" theme="amber" required />
+          <ColumnBox label="Min Price" value={marketCols.minPrice} onChange={(v: string) => handleMarketColChange('minPrice', v)} placeholder="9.00" theme="amber" />
+          <ColumnBox label="Max Price" value={marketCols.maxPrice} onChange={(v: string) => handleMarketColChange('maxPrice', v)} placeholder="13.00" theme="amber" />
+          <ColumnBox label="Retail" value={marketCols.retail} onChange={(v: string) => handleMarketColChange('retail', v)} placeholder="15.00" theme="amber" />
+          <ColumnBox label="Wholesale" value={marketCols.wholesale} onChange={(v: string) => handleMarketColChange('wholesale', v)} placeholder="8.50" theme="amber" />
+          <ColumnBox label="Currency" value={marketCols.currency} onChange={(v: string) => handleMarketColChange('currency', v)} placeholder="USD" theme="amber" />
+          <ColumnBox label="Source" value={marketCols.source} onChange={(v: string) => handleMarketColChange('source', v)} placeholder="Alibaba" theme="amber" />
+          <ColumnBox label="Country" value={marketCols.country} onChange={(v: string) => handleMarketColChange('country', v)} placeholder="CN" theme="amber" />
         </div>
       </section>
 
-      <div className="flex justify-center border-t border-slate-200 pt-8">
+      <div className="flex justify-center border-t border-slate-200 pt-8 pb-12">
         <button
           onClick={zipData}
           disabled={!supplierCols.description || !marketCols.description}
           className="px-12 py-4 bg-indigo-600 text-white rounded-2xl font-bold text-lg hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed shadow-xl shadow-indigo-200 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center gap-3"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7"/></svg>
-          Process and Match Data
+          Initialize XLOOKUP Analysis
         </button>
       </div>
     </div>
